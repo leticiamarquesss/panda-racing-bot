@@ -1,9 +1,7 @@
 import sqlite3
 
-DB_NAME = "agenda.db"
-
 def conectar():
-    return sqlite3.connect(DB_NAME, check_same_thread=False)
+    return sqlite3.connect("agenda.db", check_same_thread=False)
 
 def criar_tabela():
     conn = conectar()
@@ -11,43 +9,26 @@ def criar_tabela():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS agendamentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cliente TEXT,
-            servico TEXT,
-            data TEXT,
-            horario TEXT
+            horario TEXT UNIQUE
         )
     """)
     conn.commit()
     conn.close()
 
-def horario_ocupado(data, horario):
+def salvar_horario(horario):
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT 1 FROM agendamentos WHERE data=? AND horario=?",
-        (data, horario)
-    )
-    existe = cursor.fetchone()
-    conn.close()
-    return existe is not None
-
-def salvar_agendamento(cliente, servico, data, horario):
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO agendamentos (cliente, servico, data, horario) VALUES (?, ?, ?, ?)",
-        (cliente, servico, data, horario)
+        "INSERT INTO agendamentos (horario) VALUES (?)",
+        (horario,)
     )
     conn.commit()
     conn.close()
 
-def horarios_ocupados(data):
+def horarios_ocupados():
     conn = conectar()
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT horario FROM agendamentos WHERE data=?",
-        (data,)
-    )
-    horarios = [row[0] for row in cursor.fetchall()]
+    cursor.execute("SELECT horario FROM agendamentos")
+    dados = cursor.fetchall()
     conn.close()
-    return horarios
+    return [h[0] for h in dados]

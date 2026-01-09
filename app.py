@@ -1,166 +1,131 @@
 from flask import Flask, request, jsonify
-from datetime import datetime
-from database import criar_tabela, salvar_agendamento, horarios_ocupados
+from database import criar_tabela, salvar_horario, horarios_ocupados
 
 app = Flask(__name__)
-
-# =========================
-# INICIALIZA BANCO
-# =========================
 criar_tabela()
 
-# =========================
-# CONFIGURAÇÕES
-# =========================
+HORARIOS_FIXOS = [
+    "09:00", "11:00", "13:00", "15:00", "17:00"
+]
 
-HORARIOS_DISPONIVEIS = ["09:00", "11:00", "13:00", "15:00", "17:00"]
+def horarios_disponiveis():
+    ocupados = horarios_ocupados()
+    return [h for h in HORARIOS_FIXOS if h not in ocupados]
 
-HORARIO_ATENDIMENTO = {
-    "semana_inicio": 9,
-    "semana_fim": 18,
-    "sabado_inicio": 9,
-    "sabado_fim": 13
-}
-
-sessoes = {}
-
-# =========================
-# FUNÇÕES AUXILIARES
-# =========================
-
-def dentro_do_horario():
-    agora = datetime.now()
-    hora = agora.hour
-    dia = agora.weekday()
-
-    if dia <= 4:
-        return HORARIO_ATENDIMENTO["semana_inicio"] <= hora < HORARIO_ATENDIMENTO["semana_fim"]
-    if dia == 5:
-        return HORARIO_ATENDIMENTO["sabado_inicio"] <= hora < HORARIO_ATENDIMENTO["sabado_fim"]
-    return False
-
-def menu_principal():
-    return (
-        "Olá! 👋\n"
-        "Bem-vindo à *PANDA RACING DEVELOPMENT* 🐼🏁\n\n"
-        "1️⃣ Agendar serviço\n"
-        "2️⃣ Informações gerais\n"
-        "3️⃣ Falar com atendente"
-    )
-
-def horarios_livres(data):
-    ocupados = horarios_ocupados(data)
-    return [h for h in HORARIOS_DISPONIVEIS if h not in ocupados]
-
-# =========================
-# ROTAS
-# =========================
+def resposta(texto):
+    return jsonify({"reply": texto.strip()})
 
 @app.route("/", methods=["GET"])
 def home():
-    return "PANDA RACING DEVELOPMENT - Bot ativo"
+    return "Bot PANDA RACING DEVELOPMENT ativo 🐼"
 
-@app.route("/simular", methods=["POST"])
-def simular():
-    payload = request.get_json(silent=True) or {}
-    texto = payload.get("text", "").strip()
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    dados = request.json
+    texto = dados.get("message", "").strip().lower()
 
-    cliente_id = "cliente_teste"
+    # MENU INICIAL
+    if texto in ["menu", "oi", "olá", "ola", "inicio", "start"]:
+        return resposta("""
+Olá! 👋  
+Bem-vindo à *PANDA RACING DEVELOPMENT* 🐼🏁  
 
-    if cliente_id not in sessoes:
-        sessoes[cliente_id] = {"estado": "menu"}
+Por favor, escolha uma opção:
 
-    estado = sessoes[cliente_id]["estado"]
+1️⃣ Serviços  
+2️⃣ Informações gerais  
+3️⃣ Falar com atendente  
+4️⃣ Desmarcar agendamento
+""")
 
-    # ===== MENU =====
-    if estado == "menu":
-        if texto.lower() in ["oi", "olá", "ola", "menu", "inicio"]:
-            return jsonify({"resposta": menu_principal()})
+    # SERVIÇOS
+    if texto == "1":
+        return resposta("""
+🔧 *Serviços Disponíveis*
 
-        if texto == "1":
-            sessoes[cliente_id]["estado"] = "servico"
-            return jsonify({"resposta": "🔧 Qual serviço você deseja?"})
+1️⃣ Remap  
+2️⃣ Manutenções  
+3️⃣ Projetos  
 
-        if texto == "2":
-            return jsonify({
-                "resposta": (
-                    "ℹ️ Valores e mais informações sobre os serviços "
-                    "são informados somente presencialmente na oficina."
-                )
-            })
+Escolha uma opção:
+""")
 
-        if texto == "3":
-            if dentro_do_horario():
-                return jsonify({"resposta": "👨‍🔧 Atendimento humano acionado. Aguarde."})
-            return jsonify({
-                "resposta": "⏰ Atendimento humano:\nSeg–Sex 9h às 18h\nSáb 9h às 13h"
-            })
+    # QUALQUER SERVIÇO → AGENDAMENTO
+    if texto in ["1", "2", "3"] and dados.get("context") == "servicos":
+        pass
 
-        return jsonify({"resposta": "Digite *menu* para começar."})
-
-    # ===== SERVIÇO =====
-    if estado == "servico":
-        sessoes[cliente_id]["servico"] = texto
-        sessoes[cliente_id]["estado"] = "data"
-        return jsonify({"resposta": "📅 Qual data deseja? (ex: 20/09)"})
-
-    # ===== DATA =====
-    if estado == "data":
-        data_ag = texto
-        livres = horarios_livres(data_ag)
+    if texto in ["remap", "manutencoes", "manutenções", "projetos", "1", "2", "3"]:
+        livres = horarios_disponiveis()
 
         if not livres:
-            return jsonify({
-                "resposta": "❌ Não há horários disponíveis para essa data. Escolha outra."
-            })
+            return resposta("No momento não há horários disponíveis.")
 
-        sessoes[cliente_id]["data"] = data_ag
-        sessoes[cliente_id]["estado"] = "horario"
+        lista = "\n".join(livres)
+        return resposta(f"""
+📅 *Agendamento de Atendimento*
 
-        lista = "\n".join([f"⏰ {h}" for h in livres])
+Todos os valores e informações detalhadas são informados somente na oficina,
+pois variam conforme o veículo.
 
-        return jsonify({
-            "resposta": (
-                "Horários disponíveis:\n"
-                f"{lista}\n\n"
-                "Digite o horário desejado:"
-            )
-        })
+Horários disponíveis:
+{lista}
 
-    # ===== HORÁRIO =====
-    if estado == "horario":
-        data_ag = sessoes[cliente_id]["data"]
-        livres = horarios_livres(data_ag)
+Digite o horário desejado (ex: 09:00)
+""")
 
-        if texto not in livres:
-            return jsonify({
-                "resposta": "❌ Horário indisponível. Escolha um dos horários listados."
-            })
+    # CONFIRMAR HORÁRIO
+    if ":" in texto:
+        livres = horarios_disponiveis()
 
-        salvar_agendamento(
-            cliente_id,
-            sessoes[cliente_id]["servico"],
-            data_ag,
-            texto
-        )
+        if texto in livres:
+            salvar_horario(texto)
+            return resposta(f"""
+✅ *Agendamento Confirmado*
 
-        sessoes[cliente_id]["estado"] = "confirmado"
+Seu atendimento foi agendado com sucesso para o horário selecionado.
 
-        return jsonify({
-            "resposta": (
-                "✅ *Agendamento confirmado!*\n\n"
-                f"🔧 Serviço: {sessoes[cliente_id]['servico']}\n"
-                f"📅 Data: {data_ag}\n"
-                f"⏰ Horário: {texto}\n\n"
-                "Aguardamos você na PANDA RACING DEVELOPMENT 🐼🏁"
-            )
-        })
+📍 *PANDA RACING DEVELOPMENT*  
+Rua Gonçalo Ferreira, 379  
+Ponte Grande – Mogi das Cruzes
 
-    return jsonify({"resposta": "Digite *menu* para reiniciar."})
+Aguardamos você!
+""")
+        else:
+            return resposta("⛔ Esse horário não está disponível. Escolha um horário livre.")
 
-# =========================
-# START LOCAL
-# =========================
+    # INFORMAÇÕES GERAIS
+    if texto == "2":
+        return resposta("""
+ℹ️ *Informações Gerais*
+
+As informações técnicas e valores são informados somente presencialmente na oficina,
+pois variam de acordo com cada veículo.
+
+Estamos à disposição!
+""")
+
+    # FALAR COM ATENDENTE
+    if texto == "3":
+        return resposta("""
+👤 *Atendimento Humano*
+
+Horários de atendimento:
+• Segunda a sexta: 9h às 18h  
+• Sábado: 9h às 13h  
+
+Sua mensagem será encaminhada para atendimento.
+""")
+
+    # DESMARCAR
+    if texto == "4":
+        return resposta("""
+❌ *Desmarcar Agendamento*
+
+Para cancelar ou alterar um agendamento,
+sua mensagem será encaminhada para atendimento humano.
+""")
+
+    return resposta("Digite *menu* para ver as opções.")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
