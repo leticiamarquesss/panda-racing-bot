@@ -1,11 +1,19 @@
 from flask import Flask, request, jsonify
 from datetime import datetime
+from database import criar_tabela, salvar_agendamento, horarios_ocupados
 
 app = Flask(__name__)
 
 # =========================
+# INICIALIZA BANCO
+# =========================
+criar_tabela()
+
+# =========================
 # CONFIGURAÇÕES
 # =========================
+
+HORARIOS_DISPONIVEIS = ["09:00", "11:00", "13:00", "15:00", "17:00"]
 
 HORARIO_ATENDIMENTO = {
     "semana_inicio": 9,
@@ -14,8 +22,10 @@ HORARIO_ATENDIMENTO = {
     "sabado_fim": 13
 }
 
+sessoes = {}
+
 # =========================
-# FUNÇÕES
+# FUNÇÕES AUXILIARES
 # =========================
 
 def dentro_do_horario():
@@ -25,20 +35,22 @@ def dentro_do_horario():
 
     if dia <= 4:
         return HORARIO_ATENDIMENTO["semana_inicio"] <= hora < HORARIO_ATENDIMENTO["semana_fim"]
-    elif dia == 5:
+    if dia == 5:
         return HORARIO_ATENDIMENTO["sabado_inicio"] <= hora < HORARIO_ATENDIMENTO["sabado_fim"]
-    else:
-        return False
+    return False
 
 def menu_principal():
     return (
         "Olá! 👋\n"
         "Bem-vindo à *PANDA RACING DEVELOPMENT* 🐼🏁\n\n"
-        "Escolha uma opção:\n\n"
         "1️⃣ Agendar serviço\n"
         "2️⃣ Informações gerais\n"
         "3️⃣ Falar com atendente"
     )
+
+def horarios_livres(data):
+    ocupados = horarios_ocupados(data)
+    return [h for h in HORARIOS_DISPONIVEIS if h not in ocupados]
 
 # =========================
 # ROTAS
@@ -50,55 +62,104 @@ def home():
 
 @app.route("/simular", methods=["POST"])
 def simular():
-    data = request.get_json(silent=True) or {}
-    texto = data.get("text", "").strip().lower()
+    payload = request.get_json(silent=True) or {}
+    texto = payload.get("text", "").strip()
 
-    if texto in ["oi", "olá", "ola", "menu", "inicio", "início"]:
-        resposta = menu_principal()
+    cliente_id = "cliente_teste"
 
-    elif texto == "1":
-        resposta = (
-            "📅 *Agendamento de serviço*\n\n"
-            "Realizamos:\n"
-            "🔧 Remap\n"
-            "🔧 Revisões\n"
-            "🔧 Manutenções em geral\n\n"
-            "Envie:\n"
-            "👉 Serviço desejado\n"
-            "👉 Data e horário pretendidos"
-        )
+    if cliente_id not in sessoes:
+        sessoes[cliente_id] = {"estado": "menu"}
 
-    elif texto == "2":
-        resposta = (
-            "ℹ️ *Informações*\n\n"
-            "⚠️ Valores e mais detalhes sobre os serviços "
-            "são informados somente presencialmente na oficina."
-        )
+    estado = sessoes[cliente_id]["estado"]
 
-    elif texto == "3":
-        if dentro_do_horario():
-            resposta = (
-                "👨‍🔧 Atendimento humano disponível!\n"
-                "Um atendente irá te responder em breve."
+    # ===== MENU =====
+    if estado == "menu":
+        if texto.lower() in ["oi", "olá", "ola", "menu", "inicio"]:
+            return jsonify({"resposta": menu_principal()})
+
+        if texto == "1":
+            sessoes[cliente_id]["estado"] = "servico"
+            return jsonify({"resposta": "🔧 Qual serviço você deseja?"})
+
+        if texto == "2":
+            return jsonify({
+                "resposta": (
+                    "ℹ️ Valores e mais informações sobre os serviços "
+                    "são informados somente presencialmente na oficina."
+                )
+            })
+
+        if texto == "3":
+            if dentro_do_horario():
+                return jsonify({"resposta": "👨‍🔧 Atendimento humano acionado. Aguarde."})
+            return jsonify({
+                "resposta": "⏰ Atendimento humano:\nSeg–Sex 9h às 18h\nSáb 9h às 13h"
+            })
+
+        return jsonify({"resposta": "Digite *menu* para começar."})
+
+    # ===== SERVIÇO =====
+    if estado == "servico":
+        sessoes[cliente_id]["servico"] = texto
+        sessoes[cliente_id]["estado"] = "data"
+        return jsonify({"resposta": "📅 Qual data deseja? (ex: 20/09)"})
+
+    # ===== DATA =====
+    if estado == "data":
+        data_ag = texto
+        livres = horarios_livres(data_ag)
+
+        if not livres:
+            return jsonify({
+                "resposta": "❌ Não há horários disponíveis para essa data. Escolha outra."
+            })
+
+        sessoes[cliente_id]["data"] = data_ag
+        sessoes[cliente_id]["estado"] = "horario"
+
+        lista = "\n".join([f"⏰ {h}" for h in livres])
+
+        return jsonify({
+            "resposta": (
+                "Horários disponíveis:\n"
+                f"{lista}\n\n"
+                "Digite o horário desejado:"
             )
-        else:
-            resposta = (
-                "⏰ Atendimento humano:\n\n"
-                "🗓️ Segunda a sexta: 9h às 18h\n"
-                "🗓️ Sábado: 9h às 13h\n\n"
-                "Deixe sua mensagem que retornaremos no próximo horário útil."
-            )
+        })
 
-    else:
-        resposta = (
-            "❓ Não entendi.\n\n"
-            "Digite *menu* para ver as opções."
+    # ===== HORÁRIO =====
+    if estado == "horario":
+        data_ag = sessoes[cliente_id]["data"]
+        livres = horarios_livres(data_ag)
+
+        if texto not in livres:
+            return jsonify({
+                "resposta": "❌ Horário indisponível. Escolha um dos horários listados."
+            })
+
+        salvar_agendamento(
+            cliente_id,
+            sessoes[cliente_id]["servico"],
+            data_ag,
+            texto
         )
 
-    return jsonify({"resposta": resposta})
+        sessoes[cliente_id]["estado"] = "confirmado"
+
+        return jsonify({
+            "resposta": (
+                "✅ *Agendamento confirmado!*\n\n"
+                f"🔧 Serviço: {sessoes[cliente_id]['servico']}\n"
+                f"📅 Data: {data_ag}\n"
+                f"⏰ Horário: {texto}\n\n"
+                "Aguardamos você na PANDA RACING DEVELOPMENT 🐼🏁"
+            )
+        })
+
+    return jsonify({"resposta": "Digite *menu* para reiniciar."})
 
 # =========================
-# START
+# START LOCAL
 # =========================
 
 if __name__ == "__main__":
