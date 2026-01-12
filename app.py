@@ -124,12 +124,87 @@ Por favor, escolha uma opção:
 3️⃣ Falar com atendente  
 4️⃣ Desmarcar agendamento
 """)
-    # (aqui você mantém o restante do seu fluxo original...)
+
+    # SERVIÇOS
+    if texto_lower == "1":
+        return resposta("""
+🔧 *Serviços Disponíveis*
+
+1️⃣ Remap  
+2️⃣ Manutenções  
+3️⃣ Projetos  
+
+Escolha uma opção:
+""")
+
+    # QUALQUER SERVIÇO → AGENDAMENTO
+    if texto_lower in ["remap", "manutencoes", "manutenções", "projetos", "1", "2", "3"]:
+        livres = horarios_disponiveis()
+        if not livres:
+            return resposta("No momento não há horários disponíveis.")
+        lista = "\n".join(livres)
+        return resposta(f"""
+📅 *Agendamento de Atendimento*
+
+Todos os valores e informações detalhadas são informados somente na oficina,
+pois variam conforme o veículo.
+
+Horários disponíveis:
+{lista}
+
+Digite o horário desejado (ex: 09:00)
+""")
+
+    # CONFIRMAR HORÁRIO
+    if ":" in texto:
+        livres = horarios_disponiveis()
+        if texto in livres:
+            salvar_horario(texto)
+            return resposta(f"""
+✅ *Agendamento Confirmado*
+
+Seu atendimento foi agendado com sucesso para o horário selecionado.
+
+📍 *PANDA RACING DEVELOPMENT*  
+Rua Gonçalo Ferreira, 379  
+Ponte Grande – Mogi das Cruzes
+
+Aguardamos você!
+""")
+        else:
+            return resposta("⛔ Esse horário não está disponível. Escolha um horário livre.")
+
+    # INFORMAÇÕES GERAIS
+    if texto_lower == "2":
+        return resposta("""
+ℹ️ *Informações Gerais*
+
+As informações técnicas e valores são informados somente presencialmente na oficina,
+pois variam de acordo com cada veículo.
+
+Estamos à disposição!
+""")
+
+    # FALAR COM ATENDENTE (OPÇÃO 3)
+    if texto_lower == "3":
+        estado[chat_id] = {"modo": "humano"}
+        enviar(ATENDENTE_ID, f"📩 Novo atendimento do cliente {chat_id}:\nMensagem inicial: {texto}")
+        return resposta("""👤 *Atendimento Humano*
+
+Sua mensagem foi encaminhada para o atendente.  
+Ele responderá em breve. """)
+
+    # DESMARCAR
+    if texto_lower == "4":
+        return resposta("""
+❌ *Desmarcar Agendamento*
+
+Para cancelar ou alterar um agendamento,
+sua mensagem será encaminhada para atendimento humano.
+Digite 3 para falar com o atendente.
+""")
 
     return resposta("Digite *menu* para ver as opções.")
 
-# --- Inicialização Flask no Render ---
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0" , port=5000)
