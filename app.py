@@ -7,7 +7,7 @@ criar_tabela()
 VERIFY_TOKEN = "panda_verify"
 
 BOT_TOKEN = "7582315674AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4"
-TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+TELEGRAM_API = f"https://api.telegram.org/bot7582315674AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4"
 ATENDENTE_ID = 123456789  # seu chat_id do Telegram
 
 HORARIOS_FIXOS = ["09:00", "11:00", "13:00", "15:00", "17:00"]
@@ -29,9 +29,17 @@ def resposta(texto):
     # Apenas devolve o texto puro, WhatsApp espera body
     return texto.strip()
 
+WHATSAPP_PHONE_NUMBER_ID = "YOUR_PHONE_NUMBER_ID"  # colocar depois
+WHATSAPP_TOKEN = "YOUR_META_TOKEN"  # colocar depois
+
 def enviar_whatsapp(numero, mensagem):
-    url = f"https://graph.facebook.com/v17.0/YOUR_PHONE_NUMBER_ID/messages"
-    headers = {"Authorization": f"Bearer YOUR_META_TOKEN}"}
+    # Se o token/número não estiver definido, apenas printa
+    if WHATSAPP_PHONE_NUMBER_ID == "YOUR_PHONE_NUMBER_ID" or WHATSAPP_TOKEN == "YOUR_META_TOKEN":
+        print(f"[Simulado] Enviando para {numero}: {mensagem}")
+        return
+
+    url = f"https://graph.facebook.com/v17.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+    headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
     data = {
         "messaging_product": "whatsapp",
         "to": numero,
@@ -39,6 +47,7 @@ def enviar_whatsapp(numero, mensagem):
         "text": {"body": mensagem}
     }
     requests.post(url, json=data, headers=headers)
+
 
 # --- Webhook WhatsApp ---
 @app.route("/webhook/whatsapp", methods=["GET", "POST"])
