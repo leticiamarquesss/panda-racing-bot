@@ -30,7 +30,7 @@ def whatsapp_webhook():
 
     return "ok"
 
-BOT_TOKEN = 7582315674AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4
+BOT_TOKEN = "7582315674AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4"
 TELEGRAM_API = f"https://api.telegram.org/bot7582315674:AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4"
 ATENDENTE_ID = 123456789  # seu chat_id do Telegram
 
