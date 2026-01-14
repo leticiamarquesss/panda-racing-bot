@@ -43,7 +43,7 @@ def resposta(texto):
     # Apenas devolve o texto puro, WhatsApp espera body
     return texto.strip()
 
-WHATSAPP_PHONE_NUMBER_ID = "904367682766688"  # colocar depois
+WHATSAPP_PHONE_NUMBER_ID = "26213602611557900"  # colocar depois
 WHATSAPP_TOKEN = "EAAJTqKGa1VoBQasoK0M6RhU0MNCajkaKCeuzRFZAMIjTxWZAa3epSTfZCPiwqRjt6zMfalAicM7mU7JHdRFv3l3ZAokHhRxGC1m9AwhFNG2Axr6PuAK6zkSfCwwZCulOAFzUalXMKw1zStfmg7c4hfEeH0TSo1jvApa6z6E67tavZCjEtUzKxDuz84wrFq36gTdNdvU6ThHmX59dSNZBRJAR7UzlVtbCFcPxKA5xS2KksvpcOsvOL8aTWPYmg8x6JKGlNdxZBqEQMcefwWBtasrlo6Dngf1bIG6lOgZDZD"  # colocar depois
 def enviar_whatsapp(numero, mensagem):
     if not WHATSAPP_PHONE_NUMBER_ID or not WHATSAPP_TOKEN:
