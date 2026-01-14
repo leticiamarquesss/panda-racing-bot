@@ -6,20 +6,34 @@ app = Flask(__name__)
 criar_tabela()
 VERIFY_TOKEN = "panda_verify"
 
-BOT_TOKEN = "7582315674AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4"
-TELEGRAM_API = f"https://api.telegram.org/bot7582315674AAHE8PjojORKJJawbZKcSLpfsjs-eIN5px4"
+import os 
+
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 ATENDENTE_ID = 123456789  # seu chat_id do Telegram
 
 HORARIOS_FIXOS = ["09:00", "11:00", "13:00", "15:00", "17:00"]
 estado = {}  # ex: {chat_id: {"modo": "bot"}}
 
 # --- Funções auxiliares ---
+# --- Função para enviar mensagem no Telegram ---
 def enviar(chat_id, texto):
-    requests.post(f"{TELEGRAM_API}/sendMessage", json={
-        "chat_id": chat_id,
-        "text": texto,
-        "parse_mode": "Markdown"
-    })
+    requests.post(
+        f"{TELEGRAM_API}/sendMessage",
+        json={
+            "chat_id": chat_id,
+            "text": texto,
+            "parse_mode": "Markdown"
+        }
+    )
+
+
+# --- Webhook do Telegram ---
+def processar_telegram(dados):
+    chat_id = dados["message"]["chat"]["id"]
+    texto = dados["message"].get("text", "")
+    return chat_id, texto
 
 def horarios_disponiveis():
     ocupados = horarios_ocupados()
@@ -31,7 +45,6 @@ def resposta(texto):
 
 WHATSAPP_PHONE_NUMBER_ID = "YOUR_PHONE_NUMBER_ID"  # colocar depois
 WHATSAPP_TOKEN = "YOUR_META_TOKEN"  # colocar depois
-
 def enviar_whatsapp(numero, mensagem):
     # Se o token/número não estiver definido, apenas printa
     if WHATSAPP_PHONE_NUMBER_ID == "YOUR_PHONE_NUMBER_ID" or WHATSAPP_TOKEN == "YOUR_META_TOKEN":
@@ -206,5 +219,8 @@ Digite 3 para falar com o atendente.
 
     return resposta("Digite *menu* para ver as opções.")
 
+import os
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0" , port=5000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
