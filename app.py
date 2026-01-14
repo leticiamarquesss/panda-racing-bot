@@ -46,20 +46,29 @@ def resposta(texto):
 WHATSAPP_PHONE_NUMBER_ID = "904367682766688"  # colocar depois
 WHATSAPP_TOKEN = "EAAJTqKGa1VoBQasoK0M6RhU0MNCajkaKCeuzRFZAMIjTxWZAa3epSTfZCPiwqRjt6zMfalAicM7mU7JHdRFv3l3ZAokHhRxGC1m9AwhFNG2Axr6PuAK6zkSfCwwZCulOAFzUalXMKw1zStfmg7c4hfEeH0TSo1jvApa6z6E67tavZCjEtUzKxDuz84wrFq36gTdNdvU6ThHmX59dSNZBRJAR7UzlVtbCFcPxKA5xS2KksvpcOsvOL8aTWPYmg8x6JKGlNdxZBqEQMcefwWBtasrlo6Dngf1bIG6lOgZDZD"  # colocar depois
 def enviar_whatsapp(numero, mensagem):
-    # Se o token/número não estiver definido, apenas printa
-    if WHATSAPP_PHONE_NUMBER_ID == "YOUR_PHONE_NUMBER_ID" or WHATSAPP_TOKEN == "YOUR_META_TOKEN":
-        print(f"[Simulado] Enviando para {numero}: {mensagem}")
+    if not WHATSAPP_PHONE_NUMBER_ID or not WHATSAPP_TOKEN:
+        print("❌ Token ou Phone Number ID ausente")
         return
 
     url = f"https://graph.facebook.com/v17.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
-    headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
     data = {
         "messaging_product": "whatsapp",
         "to": numero,
         "type": "text",
-        "text": {"body": mensagem}
+        "text": {
+            "body": mensagem
+        }
     }
-    requests.post(url, json=data, headers=headers)
+
+    response = requests.post(url, json=data, headers=headers)
+    print("📤 STATUS META:", response.status_code)
+    print("📤 RESPOSTA META:", response.text)
+
 
 
 # --- Webhook WhatsApp ---
